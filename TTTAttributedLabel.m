@@ -358,6 +358,10 @@ static inline NSAttributedString * NSAttributedStringByScalingFontSize(NSAttribu
 }
 
 - (void)drawFramesetter:(CTFramesetterRef)framesetter textRange:(CFRange)textRange inRect:(CGRect)rect context:(CGContextRef)c {
+    if (textRange.location == 0 && textRange.length == 0) {
+        return;
+    }
+    
     CGMutablePathRef path = CGPathCreateMutable();
     
     CGPathAddRect(path, NULL, rect);
@@ -367,7 +371,9 @@ static inline NSAttributedString * NSAttributedStringByScalingFontSize(NSAttribu
         CTFrameDraw(frame, c);
     } else {
         CFArrayRef lines = CTFrameGetLines(frame);
-        NSUInteger numberOfLines = MIN(self.numberOfLines, CFArrayGetCount(lines));
+        NSInteger tmpNumberOfLines = self.numberOfLines;
+        CFIndex arrayCount = CFArrayGetCount(lines);
+        NSUInteger numberOfLines = MIN(tmpNumberOfLines, arrayCount);
 
         CGPoint lineOrigins[numberOfLines];
         CTFrameGetLineOrigins(frame, CFRangeMake(0, numberOfLines), lineOrigins);
