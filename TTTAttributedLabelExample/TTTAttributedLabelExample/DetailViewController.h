@@ -1,4 +1,4 @@
-// AppDelegate.m
+// DetailViewController.h
 //
 // Copyright (c) 2011 Mattt Thompson (http://mattt.me)
 // 
@@ -20,25 +20,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#import "AppDelegate.h"
+#import <UIKit/UIKit.h>
 
-#import "RootViewController.h"
+@interface DetailViewController : UIViewController
 
-@implementation AppDelegate
-@synthesize window = _window;
-@synthesize navigationController = _navigationController;
-
-- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-
-    RootViewController *viewController = [[RootViewController alloc] init];    
-    _navigationController = [[UINavigationController alloc] initWithRootViewController:viewController];
-
-    _window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];  
-    self.window.backgroundColor = [UIColor whiteColor];
-    self.window.rootViewController = self.navigationController;
-    [self.window makeKeyAndVisible];
-    return YES;
-}
-
+- (id)initWithEspressoDescription:(NSString *)espresso;
 
 @end

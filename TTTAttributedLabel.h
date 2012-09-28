@@ -32,6 +32,31 @@ typedef enum {
     TTTAttributedLabelVerticalAlignmentBottom   = 2,
 } TTTAttributedLabelVerticalAlignment;
 
+/**
+ Determines whether the text to which this attribute applies has a strikeout drawn through itself.
+ */
+extern NSString * const kTTTStrikeOutAttributeName;
+
+/**
+ The background fill color. Value must be a `CGColorRef`. Default value is `nil` (no fill).
+ */
+extern NSString * const kTTTBackgroundFillColorAttributeName;
+
+/**
+ The background stroke color. Value must be a `CGColorRef`. Default value is `nil` (no stroke).
+ */
+extern NSString * const kTTTBackgroundStrokeColorAttributeName;
+
+/**
+ The background stroke line width. Value must be an `NSNumber`. Default value is `1.0f`.
+ */
+extern NSString * const kTTTBackgroundLineWidthAttributeName;
+
+/**
+ The background corner radius. Value must be an `NSNumber`. Default value is `5.0f`.
+ */
+extern NSString * const kTTTBackgroundCornerRadiusAttributeName;
+
 @protocol TTTAttributedLabelDelegate;
 
 // Override UILabel @property to accept both NSString and NSAttributedString
@@ -48,30 +73,13 @@ typedef enum {
  
  - `text` - This property now takes an `id` type argument, which can either be a kind of `NSString` or `NSAttributedString` (mutable or immutable in both cases)
  - `lineBreakMode` - This property displays only the first line when the value is `UILineBreakModeHeadTruncation`, `UILineBreakModeTailTruncation`, or `UILineBreakModeMiddleTruncation`
- - `adjustsFontsizeToFitWidth` - This property is effective for any value of `numberOfLines` greater than zero
+ - `adjustsFontsizeToFitWidth` - Supported in iOS 5 and greater, this property is effective for any value of `numberOfLines` greater than zero. In iOS 4, setting `numberOfLines` to a value greater than 1 with `adjustsFontSizeToFitWidth` set to `YES` may cause `sizeToFit` to execute indefinitely.
+ 
+ Any properties affecting text or paragraph styling, such as `shadowRadius` or `firstLineIndent` will only apply when text is set with an `NSString`. If the text is set with an `NSAttributedString`, these properties will not apply.
+ 
+ @warning Any properties changed on the label after setting the text will not be reflected until a subsequent call to `setText:` or `setText:afterInheritingLabelAttributesAndConfiguringWithBlock:`. This is to say, order of operations matters in this case. For example, if the label text color is originally black when the text is set, changing the text color to red will have no effect on the display of the label until the text is set once again.
  */
-@interface TTTAttributedLabel : UILabel <TTTAttributedLabel, UIGestureRecognizerDelegate> {
-@private
-    NSAttributedString *_attributedText;
-    CTFramesetterRef _framesetter;
-    BOOL _needsFramesetter;
-    
-    id _delegate;
-    UIDataDetectorTypes _dataDetectorTypes;
-    NSDataDetector *_dataDetector;
-    NSArray *_links;
-    NSDictionary *_linkAttributes;
-    
-    CGFloat _shadowRadius;
-    
-    CGFloat _leading;
-    CGFloat _lineHeightMultiple;
-    CGFloat _firstLineIndent;
-    UIEdgeInsets _textInsets;
-    TTTAttributedLabelVerticalAlignment _verticalAlignment;
-    
-    UITapGestureRecognizer *_tapGestureRecognizer;
-}
+@interface TTTAttributedLabel : UILabel <TTTAttributedLabel, UIGestureRecognizerDelegate>
 
 ///-----------------------------
 /// @name Accessing the Delegate
@@ -82,7 +90,7 @@ typedef enum {
  
  @discussion A `TTTAttributedLabel` delegate responds to messages sent by tapping on links in the label. You can use the delegate to respond to links referencing a URL, address, phone number, date, or date with a specified time zone and duration.
  */
-@property (nonatomic, assign) id <TTTAttributedLabelDelegate> delegate;
+@property (nonatomic, unsafe_unretained) id <TTTAttributedLabelDelegate> delegate;
 
 ///--------------------------------------------
 /// @name Detecting, Accessing, & Styling Links
@@ -98,14 +106,19 @@ typedef enum {
 /**
  An array of `NSTextCheckingResult` objects for links detected or manually added to the label text.
  */
-@property (readonly, nonatomic, retain) NSArray *links;
+@property (readonly, nonatomic, strong) NSArray *links;
 
 /**
  A dictionary containing the `NSAttributedString` attributes to be applied to links detected or manually added to the label text. The default link style is blue and underlined.
  
  @warning You must specify `linkAttributes` before setting autodecting or manually-adding links for these attributes to be applied.
  */
-@property (nonatomic, retain) NSDictionary *linkAttributes;
+@property (nonatomic, strong) NSDictionary *linkAttributes;
+
+/**
+ A dictionary containing the `NSAttributedString` attributes to be applied to links when they are in the active state. Supply `nil` or an empty dictionary to opt out of active link styling. The default active link style is red and underlined.
+ */
+@property (nonatomic, strong) NSDictionary *activeLinkAttributes;
 
 ///---------------------------------------
 /// @name Acccessing Text Style Attributes
@@ -155,7 +168,6 @@ typedef enum {
  */
 @property (nonatomic, assign) TTTAttributedLabelVerticalAlignment verticalAlignment;
 
-
 ///----------------------------------
 /// @name Setting the Text Attributes
 ///----------------------------------
@@ -179,9 +191,25 @@ typedef enum {
  */
 - (void)setText:(id)text afterInheritingLabelAttributesAndConfiguringWithBlock:(NSMutableAttributedString *(^)(NSMutableAttributedString *mutableAttributedString))block;
 
+///----------------------------------
+/// @name Accessing the Text Attributes
+///----------------------------------
+
+/**
+ A copy of the label's current attributedText. This returns `nil` if an attributed string has never been set on the label.
+ */
+@property (readwrite, nonatomic, copy) NSAttributedString *attributedText;
+
 ///-------------------
 /// @name Adding Links
 ///-------------------
+
+/**
+ Adds a link to an `NSTextCheckingResult`.
+ 
+ @param result An `NSTextCheckingResult` representing the link's location and type.
+ */
+- (void)addLinkWithTextCheckingResult:(NSTextCheckingResult *)result;
 
 /**
  Adds a link to an `NSTextCheckingResult`.
@@ -288,4 +316,15 @@ typedef enum {
  @param duration The duration, in seconds from the date for the selected link.
  */
 - (void)attributedLabel:(TTTAttributedLabel *)label didSelectLinkWithDate:(NSDate *)date timeZone:(NSTimeZone *)timeZone duration:(NSTimeInterval)duration;
+
+/**
+ Tells the delegate that the user did select a link to a text checking result.
+ 
+ @discussion This method is called if no other delegate method was called, which can occur by either now implementing the method in `TTTAttributedLabelDelegate` corresponding to a particular link, or the link was added by passing an instance of a custom `NSTextCheckingResult` subclass into `-addLinkWithTextCheckingResult:`.
+ 
+ @param label The label whose link was selected.
+ @param result The custom text checking result.
+ */
+- (void)attributedLabel:(TTTAttributedLabel *)label didSelectLinkWithTextCheckingResult:(NSTextCheckingResult *)result;
+
 @end
