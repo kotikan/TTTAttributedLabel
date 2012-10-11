@@ -858,17 +858,19 @@ static inline NSAttributedString * NSAttributedStringBySettingColorFromContext(N
         CGMutablePathRef path = CGPathCreateMutable();
         CGPathAddRect(path, NULL, CGRectMake(0.0f, 0.0f, constraints.width, CGFLOAT_MAX));
         CTFrameRef frame = CTFramesetterCreateFrame(self.framesetter, CFRangeMake(0, 0), path, NULL);
-        CFArrayRef lines = CTFrameGetLines(frame);
-        
-        if (CFArrayGetCount(lines) > 0) {
-            NSInteger lastVisibleLineIndex = MIN(self.numberOfLines, CFArrayGetCount(lines)) - 1;
-            CTLineRef lastVisibleLine = CFArrayGetValueAtIndex(lines, lastVisibleLineIndex);
+        if (frame != nil) {
+            CFArrayRef lines = CTFrameGetLines(frame);
             
-            CFRange rangeToLayout = CTLineGetStringRange(lastVisibleLine);
-            rangeToSize = CFRangeMake(0, rangeToLayout.location + rangeToLayout.length);
+            if (lines != nil && CFArrayGetCount(lines) > 0) {
+                NSInteger lastVisibleLineIndex = MIN(self.numberOfLines, CFArrayGetCount(lines)) - 1;
+                CTLineRef lastVisibleLine = CFArrayGetValueAtIndex(lines, lastVisibleLineIndex);
+                
+                CFRange rangeToLayout = CTLineGetStringRange(lastVisibleLine);
+                rangeToSize = CFRangeMake(0, rangeToLayout.location + rangeToLayout.length);
+            }
+            
+            CFRelease(frame);
         }
-        
-        CFRelease(frame);
         CFRelease(path);
     }
     
